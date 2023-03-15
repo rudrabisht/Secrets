@@ -41,21 +41,23 @@ const User = mongoose.model("User", userSchema);
 
 passport.use(User.createStrategy());
 
-passport.serializeUser((user, done) => {
-    done(null, user)
-})
+passport.serializeUser(function(user, done) {
+    done(null, user.id);
+  });
 
-passport.deserializeUser((user, done) => {
-    done(null, user)
-})
+passport.deserializeUser(function(id, done) {
+        User.findById(id).then(user=>{
+            done(null, user);
+        }).catch((err)=>{ return done(err); });
+  });
 
 passport.use(new GoogleStrategy({
     clientID: process.env.CLIENT_ID,
     clientSecret: process.env.CLIENT_SECRET,
-    callbackURL: "http://localhost:3000/auth/google/secrets",
-    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+    callbackURL: "http://localhost:3000/auth/google/secrets"
   },
   function(accessToken, refreshToken, profile, done) {
+    console.log(profile)
     User.findOne({
         googleId: profile.id 
     }).then(function(user) {
@@ -127,7 +129,7 @@ app.post("/register", function(req, res){
 app.post("/login", function(req, res){
     
     const user = new User({
-        email: req.body.username,
+        username: req.body.username,
         password: req.body.password
     });
 
