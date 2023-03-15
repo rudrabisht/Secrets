@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const session = require("express-session");
 const passport = require("passport");
 const passportLocalMongoose = require("passport-local-mongoose")
+const GoogleStrategy = require("passport-google-oauth20").Strategy; 
 
 const port = 3000 || process.env.PORT;
 
@@ -30,7 +31,8 @@ mongoose.connect("mongodb://127.0.0.1:27017/userDB");
 
 const userSchema = new mongoose.Schema({
     email: String,
-    password: String
+    password: String,
+    googleId: String
 });
 
 userSchema.plugin(passportLocalMongoose);
@@ -39,12 +41,50 @@ const User = mongoose.model("User", userSchema);
 
 passport.use(User.createStrategy());
 
-passport.serializeUser(User.serializeUser());
-passport.deserializeUser(User.deserializeUser());
+passport.serializeUser((user, done) => {
+    done(null, user)
+})
+
+passport.deserializeUser((user, done) => {
+    done(null, user)
+})
+
+passport.use(new GoogleStrategy({
+    clientID: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    callbackURL: "http://localhost:3000/auth/google/secrets",
+    userProfileURL: "https://www.googleapis.com/oauth2/v3/userinfo"
+  },
+  function(accessToken, refreshToken, profile, done) {
+    User.findOne({
+        googleId: profile.id 
+    }).then(function(user) {
+        if (!user) {
+            user = new User({
+                googleId: profile.id
+            });
+            user.save();
+        }
+        return done(null, user);
+    }).catch((err) => {
+        return done(err);
+    })
+}
+));
 
 app.get("/", function(req, res){
     res.render("home")
 })
+
+app.get("/auth/google", passport.authenticate("google", { scope: ["profile"] })
+);
+
+app.get('/auth/google/secrets', 
+  passport.authenticate("google", { failureRedirect: "/login" }),
+  function(req, res) {
+    // Successful authentication, redirect to secrets.
+    res.redirect("/secrets");
+  });
 
 app.get("/login", function(req, res){   
     res.render("login");
@@ -87,7 +127,7 @@ app.post("/register", function(req, res){
 app.post("/login", function(req, res){
     
     const user = new User({
-        username: req.body.username,
+        email: req.body.username,
         password: req.body.password
     });
 
