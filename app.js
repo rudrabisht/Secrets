@@ -19,7 +19,7 @@ app.use(bodyParser.urlencoded({
 }));
 
 app.use(session({
-    secret: "Our little secret.",
+    secret: process.env.SECRET,
     resave: false,
     saveUninitialized: false
 }));
@@ -27,7 +27,7 @@ app.use(session({
 app.use(passport.initialize());
 app.use(passport.session());
 
-mongoose.connect("mongodb://127.0.0.1:27017/userDB");
+mongoose.connect(process.env.MONGO_URL);
 
 const userSchema = new mongoose.Schema({
     username: String,
@@ -58,7 +58,7 @@ passport.use(new GoogleStrategy({
     callbackURL: "http://localhost:3000/auth/google/secrets"
   },
   function(accessToken, refreshToken, profile, done) {
-    console.log(profile)
+    // console.log(profile)
     User.findOne({
         googleId: profile.id 
     }).then(function(user) {
